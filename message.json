@@ -1,0 +1,10 @@
+{
+    "type": "hello",
+    "apikey": "5E302A9E-E7A5-433A-950C-CF663F70E0B5",
+    "heartbeat": false,
+    "subscribe_data_type": ["trade"],
+    "subscribe_filter_symbol_id": [
+      "COINBASE_"
+      ]
+  }
+  
