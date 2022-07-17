@@ -19,19 +19,6 @@ bitcoin_data = pd.DataFrame.from_dict(
     }
 )
 
-ethereum_data = pd.DataFrame.from_dict(
-    {
-        "time_exhange": [],
-        "time_coinapi": [],
-        "uuid": [],
-        "price": [],
-        "size": [],
-        "taker_side": [],
-        "symbol_id": [],
-        "sequence": [],
-        "type": [],
-    }
-)
 
 
 env = environ.Env(
@@ -56,9 +43,6 @@ async def consumer_handler(websocket) -> None:
     async for message in websocket:
         # log_message(type(message))
         response_dict = json.loads(message)
-        if response_dict['symbol_id'] == env("ETH_SYMBOL"):
-            log_message(f"Etherium Symbol detected, Price:- {response_dict['price']}")
-            ethereum_data.append(response_dict, ignore_index=True)
         
         if response_dict['symbol_id'] == env("BTC_SYMBOL"):
             log_message(f"Bitcoin Symbol detected, Price:- {response_dict['price']}")
