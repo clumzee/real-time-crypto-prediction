@@ -4,6 +4,8 @@ import websockets
 import json
 import environ
 import pandas as pd
+from kafka import KafkaAdminClient
+from kafka.producer import KafkaProducer
 
 bitcoin_data = pd.DataFrame.from_dict(
     {
@@ -20,13 +22,14 @@ bitcoin_data = pd.DataFrame.from_dict(
 )
 
 
-
 env = environ.Env(
     # set casting, default value
     DEBUG=(bool, False)
 )
 
 environ.Env.read_env()
+
+producer = KafkaProducer(bootstrap_servers=env("BOOTSTRAP_SERVERS"))
 
 
 with open("message.json", "r") as json_file:
@@ -43,10 +46,15 @@ async def consumer_handler(websocket) -> None:
     async for message in websocket:
         # log_message(type(message))
         response_dict = json.loads(message)
-        
-        if response_dict['symbol_id'] == env("BTC_SYMBOL"):
-            log_message(f"Bitcoin Symbol detected, Price:- {response_dict['price']}")
-            bitcoin_data.append(response_dict, ignore_index=True)
+
+        if response_dict["symbol_id"] == env("BTC_SYMBOL"):
+            log_message(f"Bitcoin Symbol detected, Price:- {response_dict}")
+            # bitcoin_data.append(response_dict, ignore_index=True)
+            producer.send(
+                topic=env("KAFKA_TOPIC_NAME"),
+                key=response_dict["uuid"].encode("utf-8"),
+                value=message.encode("utf-8"),
+            )
 
             # log_message(response_dict.keys())
 
