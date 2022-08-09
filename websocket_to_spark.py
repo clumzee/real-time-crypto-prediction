@@ -1,14 +1,22 @@
-# This websocket consumer is also a kafak producer
-
-
 import asyncio
 import logging
 import websockets
+import socket
 import json
 import environ
 import pandas as pd
-from kafka import KafkaAdminClient
-from kafka.producer import KafkaProducer
+from distutils.debug import DEBUG
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+spark = (
+    SparkSession.builder.appName("spark session").master("local[*]").getOrCreate()
+)
+
+spark.sparkContext.setLogLevel("ERROR")
+
+
 
 bitcoin_data = pd.DataFrame.from_dict(
     {
@@ -32,7 +40,7 @@ env = environ.Env(
 
 environ.Env.read_env()
 
-producer = KafkaProducer(bootstrap_servers=env("BOOTSTRAP_SERVERS"))
+# producer = KafkaProducer(bootstrap_servers=env("BOOTSTRAP_SERVERS"))
 
 
 with open("message.json", "r") as json_file:
@@ -53,14 +61,15 @@ async def consumer_handler(websocket) -> None:
         if response_dict["symbol_id"] == env("BTC_SYMBOL"):
             log_message(f"Bitcoin Symbol detected, Price:- {response_dict}")
             # bitcoin_data.append(response_dict, ignore_index=True)
-            producer.send(
-                topic=env("KAFKA_TOPIC_NAME"),
-                key=response_dict["uuid"].encode("utf-8"),
-                value=message.encode("utf-8"),
+
+            bitcoin_df = (
+                spark.readStream.format("socket")
+                .option("kafka.bootstrap.servers", kafka_bootstrap_servers)
+                .option("subscribe", kafka_topic_name)
+                .option("startingOffsets", "latest")
+                .load()
             )
 
-            # bitcoin_temp_df = pd.DataFrame.from_dict(response_dict)
-            # pd.merge([bitcoin_data,bitcoin_temp_df], axis = 1)
 
             # log_message(response_dict.keys())
 
