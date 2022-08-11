@@ -1,9 +1,14 @@
 import json
+from operator import index
 import os
 import logging
 import pandas as pd
 import environ
 from kafka.consumer import KafkaConsumer
+from kafka import TopicPartition, OffsetAndMetadata
+
+logging.basicConfig(level=logging.INFO)
+
 
 env = environ.Env(
     # set casting, default value
@@ -37,18 +42,26 @@ bitcoin_data = pd.DataFrame.from_dict(
 
 
 consumer = KafkaConsumer(
-    bootstrap_servers=env("BOOTSTRAP_SERVERS"),
+    bootstrap_servers="localhost:9092",
     group_id=env("CONSUMER_GROUP"),
     key_deserializer=bitcoin_key_deserializer,
     value_deserializer=bitcoin_value_deserializer,
+    enable_auto_commit=False
 )
 
 consumer.subscribe(env("KAFKA_TOPIC_NAME"))
 
 for record in consumer:
-    bitcoin_temp_df = pd.DataFrame.from_dict(record.value)
-    bitcoin_data.append(bitcoin_temp_df)
+    bitcoin_temp_df = pd.DataFrame(record.value, index=[0])
+    bitcoin_data = bitcoin_data.append(bitcoin_temp_df)
+    print(f"Length of Data: {len(bitcoin_data)}")
     # logging.info(f"Key:- {record.key}, \n Value: {record.value}, \n Offset: {record.offset}")
+    topic_partition = TopicPartition(record.topic, record.partition)
+    offset = OffsetAndMetadata(record.offset+1, record.timestamp)
+    consumer.commit({
+        topic_partition:offset
+    })
 
     if len(bitcoin_data) > 100:
-        pass
+        bitcoin_data.to_csv("bitcoin.csv", index=False)
+        break
